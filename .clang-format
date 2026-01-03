@@ -1,0 +1,4 @@
+BasedOnStyle: LLVM  # or Google, Mozilla, WebKit, etc.
+IndentWidth: 4
+ColumnLimit: 90
+AllowShortFunctionsOnASingleLine: false
