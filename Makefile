@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -ggdb -I./include/ -MMD -MP -fsanitize=address
-LDFLAGS = -lraylib -lm
+LDFLAGS = -lraylib -lm -lasound
 TARGET = build/main.out
 
 SRC = $(wildcard sigmidi/*.c renderer/*.c)
