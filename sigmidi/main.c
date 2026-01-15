@@ -1,6 +1,8 @@
 #include <alloca.h>
 #include <alsa/asoundlib.h>
+#include <sigmidi-renderer.h>
 #include <sigmidi.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/poll.h>
@@ -33,46 +35,30 @@ void init_seqencer() {
              local_port);
 }
 
-void read_midi_events() {
-    struct pollfd *pfds;
-    int pfd_count;
+void read_midi_events(snd_seq_event_t *queue[128], int *end) {
+    // if (poll(pfds, pfd_count, 0) < 0) {
+    //     perror("poll error");
+    //     return;
+    // }
 
-    pfd_count = snd_seq_poll_descriptors_count(handle, POLLIN);
-    pfds = (struct pollfd *)alloca(pfd_count * sizeof(struct pollfd));
-
-    LOG_INFO("Poll file descriptors count: %d", pfd_count);
-    LOG_INFO("Waiting for MIDI events on %d:%d", snd_seq_client_id(handle), local_port);
-
-    while (1) {
-
-        snd_seq_poll_descriptors(handle, pfds, pfd_count, POLLIN);
-
-        if (poll(pfds, pfd_count, -1) < 0) {
-            perror("poll error");
-            continue;
+    snd_seq_event_t *event;
+    while (snd_seq_event_input_pending(handle, 1) > 0) {
+        if (snd_seq_event_input(handle, &event) < 0) {
+            LOG_ERROR("Error in reading MIDI event");
         }
 
-        if (pfds[0].revents & POLLIN) {
-            snd_seq_event_t *event;
+        if (event->type == SND_SEQ_EVENT_NOTEON) {
+            printf("Note on : ");
 
-            while (snd_seq_event_input_pending(handle, 1) > 0) {
-                if (snd_seq_event_input(handle, &event) < 0) {
-                    LOG_ERROR("Error in reading MIDI event");
-                }
+        } else if (event->type == SND_SEQ_EVENT_NOTEOFF) {
 
-                if (event->type == SND_SEQ_EVENT_NOTEON) {
-                    printf("Note on : ");
-
-                } else if (event->type == SND_SEQ_EVENT_NOTEOFF) {
-
-                    printf("Note Off: ");
-                }
-                printf("channel %d, pitch %d, velocity %d\n", event->data.note.channel,
-                       event->data.note.note, event->data.note.velocity);
-
-                snd_seq_free_event(event);
-            }
+            printf("Note Off: ");
         }
+        printf("channel %d, pitch %d, velocity %d\n", event->data.note.channel,
+               event->data.note.note, event->data.note.velocity);
+
+        queue[++(*end)] = event;
+        // snd_seq_free_event(event);
     }
 }
 
@@ -87,6 +73,34 @@ void subscribe_to_a_sender(char *sender_str) {
     snd_seq_connect_from(handle, local_port, sender_addr.client, sender_addr.port);
 }
 
+void event_loop() {
+    // setup file descriptors to read notes
+    struct pollfd *pfds;
+    int pfd_count;
+
+    pfd_count = snd_seq_poll_descriptors_count(handle, POLLIN);
+    pfds = (struct pollfd *)alloca(pfd_count * sizeof(struct pollfd));
+    snd_seq_poll_descriptors(handle, pfds, pfd_count, POLLIN);
+
+    LOG_INFO("Poll file descriptors count: %d", pfd_count);
+    LOG_INFO("Waiting for MIDI events on %d:%d", snd_seq_client_id(handle), local_port);
+
+    // Init queue
+    snd_seq_event_t *queue[128];
+    int end = -1;
+
+    // Start the event loop
+    while (!window_should_close()) {
+        read_midi_events(queue, &end);
+
+        begin_drawing();
+        for (int i = 0; i <= end; i++) {
+            draw_note(queue[i]);
+        }
+        end_drawing();
+    }
+}
+
 int main(int argc, char **argv) {
     if (argc != 2) {
         print_usage();
@@ -94,10 +108,11 @@ int main(int argc, char **argv) {
     }
 
     init_seqencer();
-
     subscribe_to_a_sender(argv[1]);
 
-    read_midi_events();
+    init_renderer(800, 600, "SigMidi");
+
+    event_loop();
 
     snd_seq_close(handle);
     handle = NULL;
