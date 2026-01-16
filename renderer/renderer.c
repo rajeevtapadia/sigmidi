@@ -1,4 +1,6 @@
+#include "sigmidi.h"
 #include <alsa/asoundlib.h>
+#include <assert.h>
 #include <raylib.h>
 #include <sigmidi-renderer.h>
 
@@ -20,6 +22,8 @@ bool window_should_close() {
 }
 
 void draw_note(snd_seq_event_t *event) {
+    assert(event != NULL);
+
     if (event->type == SND_SEQ_EVENT_NOTEON) {
         DrawRectangle(100, 100, 200, 200, RED);
     } else if (event->type == SND_SEQ_EVENT_NOTEOFF) {

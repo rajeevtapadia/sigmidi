@@ -35,12 +35,7 @@ void init_seqencer() {
              local_port);
 }
 
-void read_midi_events(snd_seq_event_t *queue[128], int *end) {
-    // if (poll(pfds, pfd_count, 0) < 0) {
-    //     perror("poll error");
-    //     return;
-    // }
-
+void read_midi_events(struct RingBuf *event_queue) {
     snd_seq_event_t *event;
     while (snd_seq_event_input_pending(handle, 1) > 0) {
         if (snd_seq_event_input(handle, &event) < 0) {
@@ -57,7 +52,7 @@ void read_midi_events(snd_seq_event_t *queue[128], int *end) {
         printf("channel %d, pitch %d, velocity %d\n", event->data.note.channel,
                event->data.note.note, event->data.note.velocity);
 
-        queue[++(*end)] = event;
+        ringbuf_push(event_queue, event);
         // snd_seq_free_event(event);
     }
 }
@@ -74,31 +69,21 @@ void subscribe_to_a_sender(char *sender_str) {
 }
 
 void event_loop() {
-    // setup file descriptors to read notes
-    struct pollfd *pfds;
-    int pfd_count;
-
-    pfd_count = snd_seq_poll_descriptors_count(handle, POLLIN);
-    pfds = (struct pollfd *)alloca(pfd_count * sizeof(struct pollfd));
-    snd_seq_poll_descriptors(handle, pfds, pfd_count, POLLIN);
-
-    LOG_INFO("Poll file descriptors count: %d", pfd_count);
-    LOG_INFO("Waiting for MIDI events on %d:%d", snd_seq_client_id(handle), local_port);
-
-    // Init queue
-    snd_seq_event_t *queue[128];
-    int end = -1;
+    struct RingBuf event_queue = ringbuf_alloc();
 
     // Start the event loop
     while (!window_should_close()) {
-        read_midi_events(queue, &end);
+        read_midi_events(&event_queue);
+        ringbuf_print(&event_queue);
 
         begin_drawing();
-        for (int i = 0; i <= end; i++) {
-            draw_note(queue[i]);
+        for (int i = 0; i < event_queue.size; i++) {
+            draw_note(event_queue.evts[i]);
         }
         end_drawing();
     }
+
+    ringbuf_free(&event_queue);
 }
 
 int main(int argc, char **argv) {
