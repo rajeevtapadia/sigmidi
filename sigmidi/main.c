@@ -1,9 +1,10 @@
 #include <alloca.h>
 #include <alsa/asoundlib.h>
+#include <assert.h>
+#include <raylib.h>
 #include <sigmidi-renderer.h>
 #include <sigmidi.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <sys/poll.h>
 
@@ -35,6 +36,13 @@ void init_seqencer() {
              local_port);
 }
 
+static inline struct MidiEvent snd_seq_event_to_midi_event(snd_seq_event_t *alsa_evt) {
+    struct MidiEvent midi_evt = {.type = alsa_evt->type,
+                                 .note = alsa_evt->data.note.note,
+                                 .velocity = alsa_evt->data.note.velocity};
+    return midi_evt;
+}
+
 void read_midi_events(struct RingBuf *event_queue) {
     snd_seq_event_t *event;
     while (snd_seq_event_input_pending(handle, 1) > 0) {
@@ -42,18 +50,9 @@ void read_midi_events(struct RingBuf *event_queue) {
             LOG_ERROR("Error in reading MIDI event");
         }
 
-        if (event->type == SND_SEQ_EVENT_NOTEON) {
-            printf("Note on : ");
-
-        } else if (event->type == SND_SEQ_EVENT_NOTEOFF) {
-
-            printf("Note Off: ");
-        }
-        printf("channel %d, pitch %d, velocity %d\n", event->data.note.channel,
-               event->data.note.note, event->data.note.velocity);
-
-        ringbuf_push(event_queue, event);
-        // snd_seq_free_event(event);
+        struct MidiEvent midi_evt = snd_seq_event_to_midi_event(event);
+        ringbuf_push(event_queue, midi_evt);
+        snd_seq_free_event(event);
     }
 }
 
@@ -74,11 +73,12 @@ void event_loop() {
     // Start the event loop
     while (!window_should_close()) {
         read_midi_events(&event_queue);
-        ringbuf_print(&event_queue);
 
         begin_drawing();
-        for (int i = 0; i < event_queue.size; i++) {
-            draw_note(event_queue.evts[i]);
+
+        if (!ringbuf_is_empty(&event_queue)) {
+            LOG_INFO("end: %d", event_queue.end);
+            draw_note(event_queue.evts[event_queue.end - 1]);
         }
         end_drawing();
     }
