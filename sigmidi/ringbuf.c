@@ -7,7 +7,7 @@
 
 struct RingBuf ringbuf_alloc() {
     struct RingBuf rb;
-    rb.evts = (snd_seq_event_t **)malloc(sizeof(snd_seq_event_t *) * INIT_CAP);
+    rb.evts = (struct MidiEvent *)malloc(sizeof(struct MidiEvent) * INIT_CAP);
     rb.start = 0;
     rb.end = 0;
     rb.size = 0;
@@ -16,7 +16,7 @@ struct RingBuf ringbuf_alloc() {
     return rb;
 }
 
-void ringbuf_push(struct RingBuf *rb, snd_seq_event_t *evt) {
+void ringbuf_push(struct RingBuf *rb, struct MidiEvent evt) {
     assert(rb != NULL);
 
     if (ringbuf_is_full(rb)) {
@@ -24,8 +24,9 @@ void ringbuf_push(struct RingBuf *rb, snd_seq_event_t *evt) {
     }
 
     rb->evts[rb->end] = evt;
-    rb->end = (rb->end + 1) % rb->capacity;
+    rb->end = (rb->end + 1) % (rb->capacity + 1);
     rb->size++;
+    ringbuf_print(rb);
 }
 
 bool ringbuf_is_full(struct RingBuf *rb) {
@@ -39,7 +40,7 @@ bool ringbuf_is_empty(struct RingBuf *rb) {
 void ringbuf_resize(struct RingBuf *rb, int new_size) {
     assert(new_size > rb->capacity);
 
-    snd_seq_event_t **new_buf = malloc(sizeof(snd_seq_event_t *) * new_size);
+    struct MidiEvent *new_buf = malloc(sizeof(struct MidiEvent) * new_size);
 
     for (int i = 0; i < rb->size; i++) {
         int ring_buf_idx = (rb->start + i) % rb->capacity;
@@ -53,21 +54,18 @@ void ringbuf_resize(struct RingBuf *rb, int new_size) {
     rb->capacity = new_size;
 }
 
-snd_seq_event_t *ringbuf_pop(struct RingBuf *rb) {
+struct MidiEvent ringbuf_pop(struct RingBuf *rb) {
     assert(rb != NULL);
+    assert(!ringbuf_is_empty(rb));
 
-    if (ringbuf_is_empty(rb))
-        return NULL;
-
-    snd_seq_event_t *popped_event = rb->evts[rb->start];
+    struct MidiEvent popped_event = rb->evts[rb->start];
     rb->start = (rb->start + 1) % rb->capacity;
     rb->size--;
     return popped_event;
 }
 
-snd_seq_event_t *ringubf_peek(struct RingBuf *rb) {
-    if (ringbuf_is_empty(rb))
-        return NULL;
+struct MidiEvent ringubf_peek(struct RingBuf *rb) {
+    assert(!ringbuf_is_empty(rb));
     return rb->evts[rb->start];
 }
 
@@ -84,14 +82,14 @@ void ringbuf_print(struct RingBuf *rb) {
     for (int i = 0; i < rb->size; i++) {
         int ring_buf_idx = (rb->start + i) % rb->capacity;
 
-        snd_seq_event_t *event = rb->evts[ring_buf_idx];
-        if (event->type == SND_SEQ_EVENT_NOTEON) {
+        struct MidiEvent event = rb->evts[ring_buf_idx];
+        if (event.type == SND_SEQ_EVENT_NOTEON) {
             printf("--> Note on : ");
-        } else if (event->type == SND_SEQ_EVENT_NOTEOFF) {
-            printf("--> Note Off: ");
+        } else if (event.type == SND_SEQ_EVENT_NOTEOFF) {
+            printf("-->. Note Off: ");
         }
-        printf("channel %d, pitch %d, velocity %d\n", event->data.note.channel,
-               event->data.note.note, event->data.note.velocity);
+        printf("type %d, pitch %d, velocity %d\n", event.type, event.note,
+               event.velocity);
     }
     LOG_INFO("-----------------------------------------------------");
 }
