@@ -15,7 +15,14 @@ struct MidiEvent {
     snd_seq_event_type_t type;
     unsigned char note;
     unsigned char velocity;
-    // TODO: add appropriate time field here
+    long time;
+};
+
+struct Note {
+    unsigned char note;
+    unsigned char velocity;
+    int start;
+    int end;
 };
 
 #endif // SIGMIDI_H

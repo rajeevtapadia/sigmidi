@@ -42,7 +42,8 @@ void init_seqencer() {
 static inline struct MidiEvent snd_seq_event_to_midi_event(snd_seq_event_t *alsa_evt) {
     struct MidiEvent midi_evt = {.type = alsa_evt->type,
                                  .note = alsa_evt->data.note.note,
-                                 .velocity = alsa_evt->data.note.velocity};
+                                 .velocity = alsa_evt->data.note.velocity,
+                                 .time = alsa_evt->data.time.time.tv_nsec};
     return midi_evt;
 }
 
@@ -70,12 +71,38 @@ void subscribe_to_a_sender(char *sender_str) {
     snd_seq_connect_from(handle, local_port, sender_addr.client, sender_addr.port);
 }
 
+void process_midi_events(struct RingBuf *event_queue, struct RingBuf *note_queue) {
+    static struct Note *keys[255];
+
+    while (!ringbuf_is_empty(event_queue)) {
+        struct MidiEvent midi_evt;
+        ringbuf_pop(event_queue, &midi_evt);
+
+        if (midi_evt.type == SND_SEQ_EVENT_NOTEON && keys[midi_evt.note] == NULL) {
+            struct Note note;
+            note.note = midi_evt.note;
+            note.velocity = midi_evt.velocity;
+            note.start = midi_evt.time;
+            note.end = -1;
+
+            ringbuf_push(note_queue, &note);
+            keys[midi_evt.note] = (struct Note *)RINGBUF_AT(note_queue, note_queue->in);
+        } else if (midi_evt.type == SND_SEQ_EVENT_NOTEOFF &&
+                   keys[midi_evt.note] != NULL) {
+            (*keys[midi_evt.note]).end = midi_evt.time;
+            keys[midi_evt.note] = NULL;
+        }
+    }
+}
+
 void event_loop() {
     struct RingBuf event_queue = ringbuf_alloc(sizeof(struct MidiEvent));
+    struct RingBuf note_queue = ringbuf_alloc(sizeof(struct Note));
 
     // Start the event loop
     while (!window_should_close()) {
         read_midi_events(&event_queue);
+        process_midi_events(&event_queue, &note_queue);
 
         begin_drawing();
 
@@ -90,6 +117,7 @@ void event_loop() {
     }
 
     ringbuf_free(&event_queue);
+    ringbuf_free(&note_queue);
 }
 
 int main(int argc, char **argv) {
