@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <sys/poll.h>
 
+#define RINGBUF_IMPLEMENTATION
+#include <3dparty/generic-ringbuf.h>
+
 snd_seq_t *handle;
 int local_port;
 
@@ -51,7 +54,7 @@ void read_midi_events(struct RingBuf *event_queue) {
         }
 
         struct MidiEvent midi_evt = snd_seq_event_to_midi_event(event);
-        ringbuf_push(event_queue, midi_evt);
+        ringbuf_push(event_queue, &midi_evt);
         snd_seq_free_event(event);
     }
 }
@@ -68,7 +71,7 @@ void subscribe_to_a_sender(char *sender_str) {
 }
 
 void event_loop() {
-    struct RingBuf event_queue = ringbuf_alloc();
+    struct RingBuf event_queue = ringbuf_alloc(sizeof(struct MidiEvent));
 
     // Start the event loop
     while (!window_should_close()) {
@@ -77,8 +80,11 @@ void event_loop() {
         begin_drawing();
 
         if (!ringbuf_is_empty(&event_queue)) {
-            LOG_INFO("end: %d", event_queue.end);
-            draw_note(event_queue.evts[event_queue.end - 1]);
+            LOG_INFO("end: %d", event_queue.in);
+            int top_idx =
+                ((event_queue.in - 1 + event_queue.capacity) % event_queue.capacity);
+            struct MidiEvent *top = (event_queue.items + top_idx * event_queue.item_size);
+            draw_note(*top);
         }
         end_drawing();
     }

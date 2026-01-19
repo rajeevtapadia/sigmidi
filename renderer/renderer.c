@@ -10,6 +10,7 @@ void init_renderer(int width, int height, const char *title) {
 
 void begin_drawing() {
     BeginDrawing();
+    ClearBackground(BLACK);
 }
 
 void end_drawing() {
