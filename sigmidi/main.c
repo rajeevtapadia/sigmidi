@@ -106,12 +106,17 @@ void event_loop() {
 
         begin_drawing();
 
-        if (!ringbuf_is_empty(&event_queue)) {
-            LOG_INFO("end: %d", event_queue.in);
-            int top_idx =
-                ((event_queue.in - 1 + event_queue.capacity) % event_queue.capacity);
-            struct MidiEvent *top = (event_queue.items + top_idx * event_queue.item_size);
-            draw_note(*top);
+        if (!ringbuf_is_empty(&note_queue)) {
+            // LOG_INFO("end: %d", event_queue.in);
+            // int top_idx =
+            //     ((event_queue.in - 1 + event_queue.capacity) % event_queue.capacity);
+            // struct MidiEvent *top = (event_queue.items + top_idx *
+            // event_queue.item_size); draw_note(*top);
+
+            for (int i = 0; i < note_queue.size; i++) {
+                int rb_idx = (note_queue.out + i) % note_queue.capacity;
+                draw_note(*(struct Note*)RINGBUF_AT(&note_queue, rb_idx));
+            }
         }
         end_drawing();
     }
@@ -129,7 +134,7 @@ int main(int argc, char **argv) {
     init_seqencer();
     subscribe_to_a_sender(argv[1]);
 
-    init_renderer(800, 600, "SigMidi");
+    init_renderer(1600, 900, "SigMidi");
 
     event_loop();
 

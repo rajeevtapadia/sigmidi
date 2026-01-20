@@ -21,11 +21,13 @@ bool window_should_close() {
     return WindowShouldClose();
 }
 
-void draw_note(struct MidiEvent event) {
-    if (event.type == SND_SEQ_EVENT_NOTEON) {
-        DrawRectangle(100, 100, 200, 200, RED);
-    } else if (event.type == SND_SEQ_EVENT_NOTEOFF) {
-        // ClearBackground(BLACK);
-    }
+void draw_note(struct Note note) {
+    int w = GetScreenWidth();
+    int h = GetScreenHeight();
+    int bar_w = w / 127;
+    int bar_h = bar_w;
+
+    DrawRectangle(note.note *bar_w, h / 2, bar_w, bar_h, RED);
+
     DrawFPS(0, 0);
 }

@@ -11,7 +11,7 @@ void init_renderer(int width, int height, const char *title);
 void begin_drawing();
 void end_drawing();
 bool window_should_close();
-void draw_note(struct MidiEvent event);
+void draw_note(struct Note note);
 // ... add more
 
 #endif // SIGMIDI_RENDERER_H
