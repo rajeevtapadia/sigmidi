@@ -71,6 +71,7 @@ void subscribe_to_a_sender(char *sender_str) {
     snd_seq_connect_from(handle, local_port, sender_addr.client, sender_addr.port);
 }
 
+// Process the ON/OFF midi events into struct Note with proper timestamping
 void process_midi_events(struct RingBuf *event_queue, struct RingBuf *note_queue) {
     static struct Note *keys[255];
 
@@ -79,17 +80,18 @@ void process_midi_events(struct RingBuf *event_queue, struct RingBuf *note_queue
         ringbuf_pop(event_queue, &midi_evt);
 
         if (midi_evt.type == SND_SEQ_EVENT_NOTEON && keys[midi_evt.note] == NULL) {
-            struct Note note;
-            note.note = midi_evt.note;
-            note.velocity = midi_evt.velocity;
-            note.start = midi_evt.time;
-            note.end = -1;
+            struct Note *note = malloc(sizeof(struct Note));
+            note->note = midi_evt.note;
+            note->velocity = midi_evt.velocity;
+            note->start = midi_evt.time;
+            note->end = -1;
 
             ringbuf_push(note_queue, &note);
-            keys[midi_evt.note] = (struct Note *)RINGBUF_AT(note_queue, note_queue->in);
+            keys[midi_evt.note] = note;
         } else if (midi_evt.type == SND_SEQ_EVENT_NOTEOFF &&
                    keys[midi_evt.note] != NULL) {
-            (*keys[midi_evt.note]).end = midi_evt.time;
+            struct Note *note = keys[midi_evt.note];
+            note->end = midi_evt.time;
             keys[midi_evt.note] = NULL;
         }
     }
@@ -97,7 +99,7 @@ void process_midi_events(struct RingBuf *event_queue, struct RingBuf *note_queue
 
 void event_loop() {
     struct RingBuf event_queue = ringbuf_alloc(sizeof(struct MidiEvent));
-    struct RingBuf note_queue = ringbuf_alloc(sizeof(struct Note));
+    struct RingBuf note_queue = ringbuf_alloc(sizeof(struct Note *));
 
     // Start the event loop
     while (!window_should_close()) {
@@ -107,15 +109,9 @@ void event_loop() {
         begin_drawing();
 
         if (!ringbuf_is_empty(&note_queue)) {
-            // LOG_INFO("end: %d", event_queue.in);
-            // int top_idx =
-            //     ((event_queue.in - 1 + event_queue.capacity) % event_queue.capacity);
-            // struct MidiEvent *top = (event_queue.items + top_idx *
-            // event_queue.item_size); draw_note(*top);
-
             for (int i = 0; i < note_queue.size; i++) {
                 int rb_idx = (note_queue.out + i) % note_queue.capacity;
-                draw_note(*(struct Note*)RINGBUF_AT(&note_queue, rb_idx));
+                draw_note(**(struct Note **)(RINGBUF_AT(&note_queue, rb_idx)));
             }
         }
         end_drawing();
