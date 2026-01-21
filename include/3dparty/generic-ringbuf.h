@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
-#define RINGBUF_VERSION 1.1.0
+#define RINGBUF_VERSION 1.2.0
 
 #define INIT_CAP 10
 
@@ -83,7 +83,7 @@ inline bool ringbuf_is_empty(struct RingBuf *rb) {
 void ringbuf_resize(struct RingBuf *rb, int new_size) {
     assert(new_size > rb->capacity);
 
-    void *new_buf = malloc(sizeof(rb->item_size) * new_size);
+    void *new_buf = malloc(rb->item_size * new_size);
 
     for (int i = 0; i < rb->size; i++) {
         int rb_idx = (rb->out + i) % rb->capacity;
