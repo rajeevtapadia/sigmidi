@@ -54,6 +54,15 @@ void init_seqencer() {
              local_port);
 }
 
+long long convert_midi_event_time_to_ms(snd_seq_event_t *evt) {
+    unsigned int tv_sec = evt->time.time.tv_sec;
+    unsigned int tv_nsec = evt->time.time.tv_nsec;
+
+    long long ms = tv_sec * 1000;
+    ms += tv_nsec / 1000000;
+    return ms;
+}
+
 static inline struct MidiEvent snd_seq_event_to_midi_event(snd_seq_event_t *alsa_evt) {
     // Check if wall clock timestamping is enabled
     assert(alsa_evt->flags & SND_SEQ_TIME_STAMP_REAL);
@@ -62,11 +71,10 @@ static inline struct MidiEvent snd_seq_event_to_midi_event(snd_seq_event_t *alsa
         .type = alsa_evt->type,
         .note = alsa_evt->data.note.note,
         .velocity = alsa_evt->data.note.velocity,
-        .time = alsa_evt->time.time.tv_sec,
+        .time = convert_midi_event_time_to_ms(alsa_evt),
     };
 
-    LOG_INFO("timestamp: %u.%09u", alsa_evt->time.time.tv_sec,
-             alsa_evt->time.time.tv_nsec);
+    LOG_INFO("timestamp: %lld ms", midi_evt.time);
     return midi_evt;
 }
 

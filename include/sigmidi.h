@@ -15,7 +15,7 @@ struct MidiEvent {
     snd_seq_event_type_t type;
     unsigned char note;
     unsigned char velocity;
-    long time;
+    long long time;
 };
 
 struct Note {
