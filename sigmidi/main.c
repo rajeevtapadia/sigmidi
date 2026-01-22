@@ -19,7 +19,7 @@ void print_usage() {
 }
 
 void init_seqencer() {
-    if (snd_seq_open(&handle, "default", SND_SEQ_OPEN_INPUT, 0) < 0) {
+    if (snd_seq_open(&handle, "default", SND_SEQ_OPEN_DUPLEX, 0) < 0) {
         LOG_ERROR("Error opening ALSA sequencer");
         exit(EXIT_FAILURE);
     }
@@ -35,15 +35,38 @@ void init_seqencer() {
         exit(EXIT_FAILURE);
     }
 
+    // Enable wall clock timestamping
+    snd_seq_port_info_t *port_info;
+    snd_seq_port_info_alloca(&port_info);
+    snd_seq_get_port_info(handle, local_port, port_info);
+
+    int q = snd_seq_alloc_queue(handle);
+
+    snd_seq_port_info_set_timestamping(port_info, 1);
+    snd_seq_port_info_set_timestamp_queue(port_info, q);
+    snd_seq_port_info_set_timestamp_real(port_info, 1);
+    snd_seq_set_port_info(handle, local_port, port_info);
+
+    snd_seq_start_queue(handle, q, NULL);
+    snd_seq_drain_output(handle);
+
     LOG_INFO("Client and Port created successfully: %d:%d", snd_seq_client_id(handle),
              local_port);
 }
 
 static inline struct MidiEvent snd_seq_event_to_midi_event(snd_seq_event_t *alsa_evt) {
-    struct MidiEvent midi_evt = {.type = alsa_evt->type,
-                                 .note = alsa_evt->data.note.note,
-                                 .velocity = alsa_evt->data.note.velocity,
-                                 .time = alsa_evt->data.time.time.tv_nsec};
+    // Check if wall clock timestamping is enabled
+    assert(alsa_evt->flags & SND_SEQ_TIME_STAMP_REAL);
+
+    struct MidiEvent midi_evt = {
+        .type = alsa_evt->type,
+        .note = alsa_evt->data.note.note,
+        .velocity = alsa_evt->data.note.velocity,
+        .time = alsa_evt->time.time.tv_sec,
+    };
+
+    LOG_INFO("timestamp: %u.%09u", alsa_evt->time.time.tv_sec,
+             alsa_evt->time.time.tv_nsec);
     return midi_evt;
 }
 
@@ -73,7 +96,7 @@ void subscribe_to_a_sender(char *sender_str) {
 
 // Process the ON/OFF midi events into struct Note with proper timestamping
 void process_midi_events(struct RingBuf *event_queue, struct RingBuf *note_queue) {
-    static struct Note *keys[255];
+    static struct Note *keys[255] = {0};
 
     while (!ringbuf_is_empty(event_queue)) {
         struct MidiEvent midi_evt;
