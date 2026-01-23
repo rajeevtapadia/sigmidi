@@ -161,7 +161,7 @@ int main(int argc, char **argv) {
     init_seqencer();
     subscribe_to_a_sender(argv[1]);
 
-    init_renderer(1600, 900, "SigMidi");
+    init_renderer(1600, 900, "SigMidi", 5);
 
     event_loop();
 
