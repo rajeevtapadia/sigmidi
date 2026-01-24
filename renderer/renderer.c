@@ -40,6 +40,42 @@ void begin_drawing() {
     ClearBackground(BLACK);
 }
 
+static bool is_black_key(unsigned char note) {
+    static const bool black_lut[12] = {
+        0, // C
+        1, // C#
+        0, // D
+        1, // D#
+        0, // E
+        0, // F
+        1, // F#
+        0, // G
+        1, // G#
+        0, // A
+        1, // A#
+        0  // B
+    };
+    return black_lut[note % 12];
+}
+
+static int get_prev_white_idx(unsigned char note) {
+    static const int prev_white_idx_lut[12] = {
+        0, // C
+        0, // C#
+        1, // D
+        1, // D#
+        2, // E
+        3, // F
+        3, // F#
+        4, // G
+        4, // G#
+        5, // A
+        5, // A#
+        6  // B
+    };
+    return prev_white_idx_lut[note % 12];
+}
+
 static void draw_piano_roll() {
     int y = layout.offset_y;
 
@@ -78,10 +114,21 @@ bool window_should_close() {
 }
 
 void draw_note(struct Note note) {
-    int w = GetScreenWidth();
-    int h = GetScreenHeight();
-    int bar_w = w / 127;
-    int bar_h = bar_w;
+    int x;
+    int w = is_black_key(note.note) ? layout.black_width : layout.white_width;
+    // TODO: Set y and h as per timestamp
+    int y = GetScreenHeight() / 2;
+    int h = 300;
 
-    DrawRectangle(note.note * bar_w, h / 2, bar_w, bar_h, RED);
+    int base_white_idx = note.note / 12 * 7;
+    int prev_white_note = base_white_idx + get_prev_white_idx(note.note);
+
+    if (is_black_key(note.note)) {
+        x = ((prev_white_note + 1) * layout.white_width) - (layout.black_width / 2);
+    } else {
+        x = (prev_white_note * layout.white_width);
+    }
+
+    DrawRectangle(x, y, w, h, RED);
+    DrawRectangleLines(x, y, w, h, BLACK);
 }
