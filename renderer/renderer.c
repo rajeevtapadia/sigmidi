@@ -17,7 +17,14 @@ struct Layout {
     int offset_y;
 };
 
+struct Player {
+    int height_ms;
+    int height_px;
+    double px_per_ms;
+};
+
 static struct Layout layout;
+static struct Player player;
 
 void init_renderer(int width, int height, const char *title, int octave_count) {
     InitWindow(width, height, title);
@@ -33,6 +40,10 @@ void init_renderer(int width, int height, const char *title, int octave_count) {
     layout.black_height = height / 12;
 
     layout.offset_y = height - (height / 8);
+
+    player.height_ms = 5000;
+    player.height_px = layout.offset_y;
+    player.px_per_ms = (double)player.height_px / player.height_ms;
 }
 
 void begin_drawing() {
@@ -114,19 +125,28 @@ bool window_should_close() {
 }
 
 void draw_note(struct Note note) {
-    int x;
-    int w = is_black_key(note.note) ? layout.black_width : layout.white_width;
-    // TODO: Set y and h as per timestamp
-    int y = GetScreenHeight() / 2;
-    int h = 300;
+    int x, y, w, h, duration;
 
+    // Calculate y and h
+    // TODO: use the ALSA queue clock time
+    double curr_time = GetTime() * 1000;
+    duration = note.end - note.start;
+    if (note.end < 0) {
+        duration = curr_time - note.start;
+    }
+    y = player.height_px - ((curr_time - note.start) * player.px_per_ms);
+    h = duration * player.px_per_ms;
+
+    // Calculate x and w
     int base_white_idx = note.note / 12 * 7;
     int prev_white_note = base_white_idx + get_prev_white_idx(note.note);
 
     if (is_black_key(note.note)) {
         x = ((prev_white_note + 1) * layout.white_width) - (layout.black_width / 2);
+        w = layout.black_width;
     } else {
         x = (prev_white_note * layout.white_width);
+        w = layout.white_width;
     }
 
     DrawRectangle(x, y, w, h, RED);
