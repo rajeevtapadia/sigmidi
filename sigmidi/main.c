@@ -1,18 +1,16 @@
-#include <alloca.h>
 #include <alsa/asoundlib.h>
 #include <assert.h>
-#include <raylib.h>
+#include <limits.h>
 #include <sigmidi-renderer.h>
 #include <sigmidi.h>
-#include <stddef.h>
 #include <stdlib.h>
-#include <sys/poll.h>
 
 #define RINGBUF_IMPLEMENTATION
 #include <3dparty/generic-ringbuf.h>
 
 snd_seq_t *handle;
 int local_port;
+int queue_id;
 
 void print_usage() {
     LOG_ERROR("Usage: sigmidi <client>:<port>");
@@ -40,26 +38,23 @@ void init_seqencer() {
     snd_seq_port_info_alloca(&port_info);
     snd_seq_get_port_info(handle, local_port, port_info);
 
-    int q = snd_seq_alloc_queue(handle);
+    queue_id = snd_seq_alloc_queue(handle);
 
     snd_seq_port_info_set_timestamping(port_info, 1);
-    snd_seq_port_info_set_timestamp_queue(port_info, q);
+    snd_seq_port_info_set_timestamp_queue(port_info, queue_id);
     snd_seq_port_info_set_timestamp_real(port_info, 1);
     snd_seq_set_port_info(handle, local_port, port_info);
 
-    snd_seq_start_queue(handle, q, NULL);
+    snd_seq_start_queue(handle, queue_id, NULL);
     snd_seq_drain_output(handle);
 
     LOG_INFO("Client and Port created successfully: %d:%d", snd_seq_client_id(handle),
              local_port);
 }
 
-long long convert_midi_event_time_to_ms(snd_seq_event_t *evt) {
-    unsigned int tv_sec = evt->time.time.tv_sec;
-    unsigned int tv_nsec = evt->time.time.tv_nsec;
-
-    long long ms = tv_sec * 1000;
-    ms += tv_nsec / 1000000;
+long long convert_alsa_real_time_to_ms(snd_seq_real_time_t time) {
+    long long ms = time.tv_sec * 1000;
+    ms += time.tv_nsec / 1000000;
     return ms;
 }
 
@@ -71,7 +66,7 @@ static inline struct MidiEvent snd_seq_event_to_midi_event(snd_seq_event_t *alsa
         .type = alsa_evt->type,
         .note = alsa_evt->data.note.note,
         .velocity = alsa_evt->data.note.velocity,
-        .time = convert_midi_event_time_to_ms(alsa_evt),
+        .time = convert_alsa_real_time_to_ms(alsa_evt->time.time),
     };
 
     LOG_INFO("timestamp: %lld ms", midi_evt.time);
@@ -102,6 +97,19 @@ void subscribe_to_a_sender(char *sender_str) {
     snd_seq_connect_from(handle, local_port, sender_addr.client, sender_addr.port);
 }
 
+long long alsa_time_now_ms() {
+    snd_seq_queue_status_t *q_status;
+    snd_seq_queue_status_alloca(&q_status);
+
+    if (snd_seq_get_queue_status(handle, queue_id, q_status) < 0) {
+        LOG_ERROR("Failed to get current time from ALSA queue");
+        return 0.0;
+    }
+
+    const snd_seq_real_time_t *t = snd_seq_queue_status_get_real_time(q_status);
+    return convert_alsa_real_time_to_ms(*t);
+}
+
 // Process the ON/OFF midi events into struct Note with proper timestamping
 void process_midi_events(struct RingBuf *event_queue, struct RingBuf *note_queue) {
     static struct Note *keys[255] = {0};
@@ -115,7 +123,7 @@ void process_midi_events(struct RingBuf *event_queue, struct RingBuf *note_queue
             note->note = midi_evt.note;
             note->velocity = midi_evt.velocity;
             note->start = midi_evt.time;
-            note->end = -1;
+            note->end = INT_MAX;
 
             ringbuf_push(note_queue, &note);
             keys[midi_evt.note] = note;
@@ -125,6 +133,30 @@ void process_midi_events(struct RingBuf *event_queue, struct RingBuf *note_queue
             note->end = midi_evt.time;
             keys[midi_evt.note] = NULL;
         }
+    }
+}
+
+void gc_note_queue(struct RingBuf *note_queue) {
+    if (ringbuf_is_empty(note_queue))
+        return;
+
+    long long time_now_ms = alsa_time_now_ms();
+    int counter = 0;
+
+    while (!ringbuf_is_empty(note_queue)) {
+        struct Note *item;
+        ringubf_peek(note_queue, &item);
+        if (item->end > (time_now_ms - 5000)) {
+            break;
+        }
+
+        ringbuf_pop(note_queue, NULL);
+        free(item);
+        counter++;
+    }
+    if (counter > 0) {
+        LOG_INFO("GC: %lu bytes in %d object(s) freed", counter * sizeof(struct Note),
+                 counter);
     }
 }
 
@@ -146,6 +178,7 @@ void event_loop() {
             }
         }
         end_drawing();
+        gc_note_queue(&note_queue);
     }
 
     ringbuf_free(&event_queue);

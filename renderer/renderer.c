@@ -1,5 +1,6 @@
 #include "sigmidi.h"
 #include <assert.h>
+#include <limits.h>
 #include <raylib.h>
 #include <sigmidi-renderer.h>
 
@@ -131,7 +132,7 @@ void draw_note(struct Note note) {
     // TODO: use the ALSA queue clock time
     double curr_time = GetTime() * 1000;
     duration = note.end - note.start;
-    if (note.end < 0) {
+    if (note.end == INT_MAX) {
         duration = curr_time - note.start;
     }
     y = player.height_px - ((curr_time - note.start) * player.px_per_ms);
