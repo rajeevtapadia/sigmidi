@@ -4,10 +4,11 @@
 #include <raylib.h>
 #include <sigmidi-renderer.h>
 
+#define WHITE_PER_OCTAVE 7
+
 struct Layout {
     int octave_count;
 
-    int white_per_octave;
     int white_key_count;
     int white_width;
     int white_height;
@@ -35,8 +36,7 @@ void init_renderer(struct RendererOptions options) {
     SetTargetFPS(opt.fps);
 
     layout.octave_count = opt.octave_count;
-    layout.white_per_octave = 7;
-    layout.white_key_count = opt.octave_count * layout.white_per_octave;
+    layout.white_key_count = opt.octave_count * WHITE_PER_OCTAVE;
     layout.white_width = opt.width / layout.white_key_count;
     layout.white_height = opt.height / 8;
 
@@ -101,12 +101,21 @@ static void draw_piano_roll() {
 
         DrawRectangle(x, y, w, h, RAYWHITE);
         DrawRectangleLines(x, y, w, h, BLACK);
+
+        if (i % WHITE_PER_OCTAVE == 0) {
+            const char *text =
+                TextFormat("C%d", i / WHITE_PER_OCTAVE + opt.octave_offset);
+            int font_s = 20;
+            int font_x = x + 5;
+            int font_y = GetScreenHeight() - font_s;
+            DrawText(text, font_x, font_y, font_s, BLACK);
+        }
     }
 
     static int black_key_pattern[] = {1, 1, 0, 1, 1, 1, 0};
 
     for (int octave = 0; octave < layout.octave_count; octave++) {
-        int base_white_idx = octave * layout.white_per_octave;
+        int base_white_idx = octave * WHITE_PER_OCTAVE;
         for (int key = 0; key < 7; key++) {
             if (!black_key_pattern[key])
                 continue;
@@ -142,8 +151,8 @@ void draw_note(struct Note note) {
     h = duration * player.px_per_ms;
 
     // Calculate x and w
-    int base_white_idx = note.note / 12 * 7;
-    base_white_idx -= opt.octave_offset * 7;
+    int base_white_idx = note.note / 12 * WHITE_PER_OCTAVE;
+    base_white_idx -= opt.octave_offset * WHITE_PER_OCTAVE;
     int prev_white_note = base_white_idx + get_prev_white_idx(note.note);
 
     if (is_black_key(note.note)) {
