@@ -7,7 +7,7 @@
 #include <stddef.h>
 
 // Interface for renderer
-void init_renderer(int width, int height, const char *title, int octave_count);
+void init_renderer(struct RendererOptions options);
 void begin_drawing();
 void end_drawing();
 bool window_should_close();

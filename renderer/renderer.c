@@ -26,21 +26,24 @@ struct Player {
 
 static struct Layout layout;
 static struct Player player;
+static struct RendererOptions opt;
 
-void init_renderer(int width, int height, const char *title, int octave_count) {
-    InitWindow(width, height, title);
-    SetTargetFPS(60);
+void init_renderer(struct RendererOptions options) {
+    opt = options;
 
-    layout.octave_count = octave_count;
+    InitWindow(opt.width, opt.height, opt.title);
+    SetTargetFPS(opt.fps);
+
+    layout.octave_count = opt.octave_count;
     layout.white_per_octave = 7;
-    layout.white_key_count = octave_count * layout.white_per_octave;
-    layout.white_width = width / layout.white_key_count;
-    layout.white_height = height / 8;
+    layout.white_key_count = opt.octave_count * layout.white_per_octave;
+    layout.white_width = opt.width / layout.white_key_count;
+    layout.white_height = opt.height / 8;
 
     layout.black_width = layout.white_width * 0.5;
-    layout.black_height = height / 12;
+    layout.black_height = opt.height / 12;
 
-    layout.offset_y = height - (height / 8);
+    layout.offset_y = opt.height * 7 / 8;
 
     player.height_ms = 5000;
     player.height_px = layout.offset_y;
@@ -140,6 +143,7 @@ void draw_note(struct Note note) {
 
     // Calculate x and w
     int base_white_idx = note.note / 12 * 7;
+    base_white_idx -= opt.octave_offset * 7;
     int prev_white_note = base_white_idx + get_prev_white_idx(note.note);
 
     if (is_black_key(note.note)) {

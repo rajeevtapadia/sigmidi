@@ -194,7 +194,13 @@ int main(int argc, char **argv) {
     init_seqencer();
     subscribe_to_a_sender(argv[1]);
 
-    init_renderer(1600, 900, "SigMidi", 5);
+    struct RendererOptions opt = {.width = 1600,
+                                  .height = 900,
+                                  .title = "SigMidi",
+                                  .fps = 60,
+                                  .octave_count = 5,
+                                  .octave_offset = 2};
+    init_renderer(opt);
 
     event_loop();
 

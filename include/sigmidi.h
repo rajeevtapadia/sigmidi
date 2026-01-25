@@ -25,4 +25,13 @@ struct Note {
     int end;
 };
 
+struct RendererOptions {
+    int width;
+    int height;
+    const char *title;
+    int fps;
+    int octave_count;
+    int octave_offset;
+};
+
 #endif // SIGMIDI_H
