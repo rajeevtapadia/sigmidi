@@ -1,6 +1,7 @@
 #include "sigmidi.h"
 #include <assert.h>
 #include <limits.h>
+#include <math.h>
 #include <raylib.h>
 #include <sigmidi-renderer.h>
 
@@ -109,8 +110,9 @@ static void draw_piano_roll() {
         DrawRectangleLines(x, y, w, h, BG_COLOR);
 
         if (i % WHITE_PER_OCTAVE == 0) {
+            // NOTE: octave labeling starts from C-1
             const char *text =
-                TextFormat("C%d", i / WHITE_PER_OCTAVE + opt.octave_offset);
+                TextFormat("C%d", i / WHITE_PER_OCTAVE + opt.octave_offset - 1);
             int font_s = 20;
             int font_x = x + 5;
             int font_y = GetScreenHeight() - font_s;
@@ -128,7 +130,8 @@ static void draw_piano_roll() {
             int white_idx = base_white_idx + key;
             int x = (white_idx + 1) * layout.white_width - (layout.black_width / 2);
 
-            DrawRectangle(x, y, layout.black_width, layout.black_height, PIANO_ROLL_BLACK);
+            DrawRectangle(x, y, layout.black_width, layout.black_height,
+                          PIANO_ROLL_BLACK);
         }
     }
 }
@@ -143,6 +146,22 @@ bool window_should_close() {
     return WindowShouldClose();
 }
 
+Color get_velocity_color_tanh(Color baseColor, unsigned char velocity) {
+    if (velocity == 0)
+        return BLANK;
+    /*
+     * a: scaling coefficient i.e. how fast the color changes wrt velocity
+     * b: velocity that will retain original color
+     * x: input velocity
+     * y: brightness factor scaled from -0.4 to +0.4
+     */
+    float a, b, x, y;
+    a = 8;
+    b = 70;
+    x = velocity;
+    y = (tanhf(a * (x - b) / 127)) * 0.4;
+    return ColorBrightness(baseColor, y);
+}
 void draw_note(struct Note note) {
     int x, y, w, h, duration;
     Color color;
@@ -165,11 +184,11 @@ void draw_note(struct Note note) {
     if (is_black_key(note.note)) {
         x = ((prev_white_note + 1) * layout.white_width) - (layout.black_width / 2);
         w = layout.black_width;
-        color = FALLING_BLACK_NOTE_COLOR;
+        color = get_velocity_color_tanh(FALLING_BLACK_NOTE_COLOR, note.velocity);
     } else {
         x = (prev_white_note * layout.white_width);
         w = layout.white_width;
-        color = FALLING_WHITE_NOTE_COLOR;
+        color = get_velocity_color_tanh(FALLING_WHITE_NOTE_COLOR, note.velocity);
     }
 
     DrawRectangle(x, y, w, h, color);

@@ -69,7 +69,9 @@ static inline struct MidiEvent snd_seq_event_to_midi_event(snd_seq_event_t *alsa
         .time = convert_alsa_real_time_to_ms(alsa_evt->time.time),
     };
 
-    LOG_INFO("timestamp: %lld ms", midi_evt.time);
+    if (alsa_evt->type == SND_SEQ_EVENT_NOTEON) {
+        LOG_INFO("timestamp: %lld ms, velocity: %d", midi_evt.time, midi_evt.velocity);
+    }
     return midi_evt;
 }
 
@@ -141,22 +143,17 @@ void gc_note_queue(struct RingBuf *note_queue) {
         return;
 
     long long time_now_ms = alsa_time_now_ms();
-    int counter = 0;
 
     while (!ringbuf_is_empty(note_queue)) {
         struct Note *item;
         ringubf_peek(note_queue, &item);
+        // TODO: Hardcoded value BAD!!
         if (item->end > (time_now_ms - 5000)) {
             break;
         }
 
         ringbuf_pop(note_queue, NULL);
         free(item);
-        counter++;
-    }
-    if (counter > 0) {
-        LOG_INFO("GC: %lu bytes in %d object(s) freed", counter * sizeof(struct Note),
-                 counter);
     }
 }
 
