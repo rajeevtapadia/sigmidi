@@ -166,6 +166,7 @@ void event_loop() {
         read_midi_events(&event_queue);
         process_midi_events(&event_queue, &note_queue);
 
+        pre_drawing();
         begin_drawing();
 
         if (!ringbuf_is_empty(&note_queue)) {
@@ -174,7 +175,10 @@ void event_loop() {
                 draw_note(**(struct Note **)(RINGBUF_AT(&note_queue, rb_idx)));
             }
         }
+
         end_drawing();
+        post_drawing();
+
         gc_note_queue(&note_queue);
     }
 
@@ -191,12 +195,15 @@ int main(int argc, char **argv) {
     init_seqencer();
     subscribe_to_a_sender(argv[1]);
 
-    struct RendererOptions opt = {.width = 1600,
-                                  .height = 900,
-                                  .title = "SigMidi",
-                                  .fps = 60,
-                                  .octave_count = 5,
-                                  .octave_offset = 2};
+    struct RendererOptions opt = {
+        .width = 1600,
+        .height = 900,
+        .title = "SigMidi",
+        .fps = 60,
+        .octave_count = 5,
+        .octave_offset = 2,
+        .velocity_based_color = true,
+    };
     init_renderer(opt);
 
     event_loop();

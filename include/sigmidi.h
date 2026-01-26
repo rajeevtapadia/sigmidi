@@ -32,6 +32,7 @@ struct RendererOptions {
     int fps;
     int octave_count;
     int octave_offset;
+    bool velocity_based_color;
 };
 
 #endif // SIGMIDI_H

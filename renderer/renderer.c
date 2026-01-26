@@ -146,7 +146,10 @@ bool window_should_close() {
     return WindowShouldClose();
 }
 
-Color get_velocity_color_tanh(Color baseColor, unsigned char velocity) {
+Color get_velocity_color_tanh(Color base_color, unsigned char velocity) {
+    if (!opt.velocity_based_color) {
+        return base_color;
+    }
     if (velocity == 0)
         return BLANK;
     /*
@@ -160,8 +163,9 @@ Color get_velocity_color_tanh(Color baseColor, unsigned char velocity) {
     b = 70;
     x = velocity;
     y = (tanhf(a * (x - b) / 127)) * 0.4;
-    return ColorBrightness(baseColor, y);
+    return ColorBrightness(base_color, y);
 }
+
 void draw_note(struct Note note) {
     int x, y, w, h, duration;
     Color color;
@@ -193,4 +197,13 @@ void draw_note(struct Note note) {
 
     DrawRectangle(x, y, w, h, color);
     DrawRectangleLines(x, y, w, h, BG_COLOR);
+}
+
+void pre_drawing() {
+    if (IsKeyPressed(KEY_V)) {
+        opt.velocity_based_color = !opt.velocity_based_color;
+    }
+}
+
+void post_drawing() {
 }

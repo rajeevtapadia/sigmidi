@@ -8,8 +8,10 @@
 
 // Interface for renderer
 void init_renderer(struct RendererOptions options);
+void pre_drawing();
 void begin_drawing();
 void end_drawing();
+void post_drawing();
 bool window_should_close();
 void draw_note(struct Note note);
 // ... add more
