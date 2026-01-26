@@ -6,6 +6,12 @@
 
 #define WHITE_PER_OCTAVE 7
 
+const Color BG_COLOR = (Color){20, 20, 21, 255};
+const Color PIANO_ROLL_WHITE = (Color){195, 195, 213, 255};
+const Color PIANO_ROLL_BLACK = (Color){0, 0, 0, 255};
+const Color FALLING_WHITE_NOTE_COLOR = (Color){187, 157, 189, 255};
+const Color FALLING_BLACK_NOTE_COLOR = (Color){216, 100, 126, 255};
+
 struct Layout {
     int octave_count;
 
@@ -52,7 +58,7 @@ void init_renderer(struct RendererOptions options) {
 
 void begin_drawing() {
     BeginDrawing();
-    ClearBackground(BLACK);
+    ClearBackground(BG_COLOR);
 }
 
 static bool is_black_key(unsigned char note) {
@@ -99,8 +105,8 @@ static void draw_piano_roll() {
         int w = layout.white_width - 1;
         int h = layout.white_height;
 
-        DrawRectangle(x, y, w, h, RAYWHITE);
-        DrawRectangleLines(x, y, w, h, BLACK);
+        DrawRectangle(x, y, w, h, PIANO_ROLL_WHITE);
+        DrawRectangleLines(x, y, w, h, BG_COLOR);
 
         if (i % WHITE_PER_OCTAVE == 0) {
             const char *text =
@@ -108,7 +114,7 @@ static void draw_piano_roll() {
             int font_s = 20;
             int font_x = x + 5;
             int font_y = GetScreenHeight() - font_s;
-            DrawText(text, font_x, font_y, font_s, BLACK);
+            DrawText(text, font_x, font_y, font_s, BG_COLOR);
         }
     }
 
@@ -122,7 +128,7 @@ static void draw_piano_roll() {
             int white_idx = base_white_idx + key;
             int x = (white_idx + 1) * layout.white_width - (layout.black_width / 2);
 
-            DrawRectangle(x, y, layout.black_width, layout.black_height, BLACK);
+            DrawRectangle(x, y, layout.black_width, layout.black_height, PIANO_ROLL_BLACK);
         }
     }
 }
@@ -139,6 +145,7 @@ bool window_should_close() {
 
 void draw_note(struct Note note) {
     int x, y, w, h, duration;
+    Color color;
 
     // Calculate y and h
     // TODO: use the ALSA queue clock time
@@ -158,11 +165,13 @@ void draw_note(struct Note note) {
     if (is_black_key(note.note)) {
         x = ((prev_white_note + 1) * layout.white_width) - (layout.black_width / 2);
         w = layout.black_width;
+        color = FALLING_BLACK_NOTE_COLOR;
     } else {
         x = (prev_white_note * layout.white_width);
         w = layout.white_width;
+        color = FALLING_WHITE_NOTE_COLOR;
     }
 
-    DrawRectangle(x, y, w, h, RED);
-    DrawRectangleLines(x, y, w, h, BLACK);
+    DrawRectangle(x, y, w, h, color);
+    DrawRectangleLines(x, y, w, h, BG_COLOR);
 }
