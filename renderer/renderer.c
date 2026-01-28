@@ -26,22 +26,26 @@ struct Layout {
     int offset_y;
 };
 
+struct TimeSign {
+    int top;
+    int bottom;
+};
+
 struct Player {
     int height_ms;
     int height_px;
     double px_per_ms;
+
+    int beats_per_measure;
+    float bpm;
+    int measure_len_ms;
 };
 
 static struct Layout layout;
 static struct Player player;
 static struct RendererOptions opt;
 
-void init_renderer(struct RendererOptions options) {
-    opt = options;
-
-    InitWindow(opt.width, opt.height, opt.title);
-    SetTargetFPS(opt.fps);
-
+void calc_layout() {
     layout.octave_count = opt.octave_count;
     layout.white_key_count = opt.octave_count * WHITE_PER_OCTAVE;
     layout.white_width = opt.width / layout.white_key_count;
@@ -51,10 +55,28 @@ void init_renderer(struct RendererOptions options) {
     layout.black_height = opt.height / 12;
 
     layout.offset_y = opt.height * 7 / 8;
+}
+
+int calc_measure_len() {
+    float ms_per_beat = (float)(60 * 1000) / player.bpm;
+    return player.beats_per_measure * ms_per_beat;
+}
+
+void init_renderer(struct RendererOptions options) {
+    opt = options;
+
+    InitWindow(opt.width, opt.height, opt.title);
+    SetTargetFPS(opt.fps);
+
+    calc_layout();
 
     player.height_ms = 5000;
     player.height_px = layout.offset_y;
     player.px_per_ms = (double)player.height_px / player.height_ms;
+
+    player.bpm = 100;
+    player.beats_per_measure = 4;
+    player.measure_len_ms = calc_measure_len();
 }
 
 void begin_drawing() {
@@ -199,7 +221,28 @@ void draw_note(struct Note note) {
     DrawRectangleLines(x, y, w, h, BG_COLOR);
 }
 
+void update_octave_count(int new_count) {
+    opt.octave_count = new_count;
+    calc_layout();
+}
+
 void pre_drawing() {
+    // Keyboard shortcuts
+    if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) {
+        if (IsKeyPressed(KEY_EQUAL) && opt.octave_offset < 9) {
+            opt.octave_offset++;
+        }
+        if (IsKeyPressed(KEY_MINUS) && opt.octave_offset > -1) {
+            opt.octave_offset--;
+        }
+    }
+
+    if (IsKeyPressed(KEY_UP) && opt.octave_offset < 9) {
+        update_octave_count(opt.octave_count + 1);
+    }
+    if (IsKeyPressed(KEY_DOWN) && opt.octave_offset > -1) {
+        update_octave_count(opt.octave_count - 1);
+    }
     if (IsKeyPressed(KEY_V)) {
         opt.velocity_based_color = !opt.velocity_based_color;
     }
