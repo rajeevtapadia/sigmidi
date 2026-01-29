@@ -12,6 +12,7 @@ const Color PIANO_ROLL_WHITE = (Color){195, 195, 213, 255};
 const Color PIANO_ROLL_BLACK = (Color){0, 0, 0, 255};
 const Color FALLING_WHITE_NOTE_COLOR = (Color){187, 157, 189, 255};
 const Color FALLING_BLACK_NOTE_COLOR = (Color){216, 100, 126, 255};
+const Color MEASURE_LINE_COLOR = (Color){130, 130, 130, 127};
 
 struct Layout {
     int octave_count;
@@ -26,11 +27,6 @@ struct Layout {
     int offset_y;
 };
 
-struct TimeSign {
-    int top;
-    int bottom;
-};
-
 struct Player {
     int height_ms;
     int height_px;
@@ -39,6 +35,7 @@ struct Player {
     int beats_per_measure;
     float bpm;
     int measure_len_ms;
+    int measure_len_px;
 };
 
 static struct Layout layout;
@@ -77,11 +74,27 @@ void init_renderer(struct RendererOptions options) {
     player.bpm = 100;
     player.beats_per_measure = 4;
     player.measure_len_ms = calc_measure_len();
+    player.measure_len_px = player.measure_len_ms * player.px_per_ms;
+}
+
+void draw_measure_lines() {
+    int x1 = 0;
+    int x2 = GetScreenWidth();
+    float curr_time_ms = GetTime() * 1000;
+    float offset_ms = fmodf(curr_time_ms, player.measure_len_ms);
+    float offset_px = offset_ms * player.px_per_ms;
+
+    int n = player.height_ms / player.measure_len_ms;
+    for (int i = 0; i <= n; i++) {
+        int y = player.height_px - (i * player.measure_len_px) - offset_px;
+        DrawLine(x1, y, x2, y, MEASURE_LINE_COLOR);
+    }
 }
 
 void begin_drawing() {
     BeginDrawing();
     ClearBackground(BG_COLOR);
+    draw_measure_lines();
 }
 
 static bool is_black_key(unsigned char note) {
