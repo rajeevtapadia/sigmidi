@@ -13,6 +13,8 @@ const Color PIANO_ROLL_BLACK = (Color){0, 0, 0, 255};
 const Color FALLING_WHITE_NOTE_COLOR = (Color){187, 157, 189, 255};
 const Color FALLING_BLACK_NOTE_COLOR = (Color){216, 100, 126, 255};
 const Color MEASURE_LINE_COLOR = (Color){130, 130, 130, 127};
+const Color OCTAVE_LINE_COLOR = (Color){130, 130, 130, 63};
+const Color TEXT_COLOR = (Color){196, 130, 130, 255};
 
 struct Layout {
     int octave_count;
@@ -59,6 +61,13 @@ int calc_measure_len() {
     return player.beats_per_measure * ms_per_beat;
 }
 
+void set_tempo(int t) {
+    player.bpm = t;
+    player.beats_per_measure = 4;
+    player.measure_len_ms = calc_measure_len();
+    player.measure_len_px = player.measure_len_ms * player.px_per_ms;
+}
+
 void init_renderer(struct RendererOptions options) {
     opt = options;
 
@@ -71,10 +80,17 @@ void init_renderer(struct RendererOptions options) {
     player.height_px = layout.offset_y;
     player.px_per_ms = (double)player.height_px / player.height_ms;
 
-    player.bpm = 100;
-    player.beats_per_measure = 4;
-    player.measure_len_ms = calc_measure_len();
-    player.measure_len_px = player.measure_len_ms * player.px_per_ms;
+    set_tempo(100);
+}
+
+void draw_octave_lines() {
+    int y1 = 0;
+    int y2 = player.height_px;
+    for (int octave = 0; octave < layout.octave_count; octave++) {
+        int base_white_idx = octave * WHITE_PER_OCTAVE;
+        int x = base_white_idx * layout.white_width;
+        DrawLine(x, y1, x, y2, OCTAVE_LINE_COLOR);
+    }
 }
 
 void draw_measure_lines() {
@@ -95,6 +111,7 @@ void begin_drawing() {
     BeginDrawing();
     ClearBackground(BG_COLOR);
     draw_measure_lines();
+    draw_octave_lines();
 }
 
 static bool is_black_key(unsigned char note) {
@@ -173,7 +190,9 @@ static void draw_piano_roll() {
 
 void end_drawing() {
     draw_piano_roll();
-    DrawFPS(0, 0);
+    const char *status_str = TextFormat("Tempo: %d, Beats/Measure: %d", (int)player.bpm,
+                                        player.beats_per_measure);
+    DrawText(status_str, 0, 0, 20, TEXT_COLOR);
     EndDrawing();
 }
 
@@ -247,6 +266,12 @@ void pre_drawing() {
         }
         if (IsKeyPressed(KEY_MINUS) && opt.octave_offset > -1) {
             opt.octave_offset--;
+        }
+        if (IsKeyPressed(KEY_COMMA) && player.bpm > 10) {
+            set_tempo(player.bpm - 5);
+        }
+        if (IsKeyPressed(KEY_PERIOD) && player.bpm < 300) {
+            set_tempo(player.bpm + 5);
         }
     }
 
