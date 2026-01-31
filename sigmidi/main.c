@@ -12,6 +12,7 @@
 snd_seq_t *handle;
 int local_port;
 int queue_id;
+bool sustain_pedal = false;
 
 void print_usage() {
     LOG_ERROR("Usage: sigmidi <client>:<port>");
@@ -81,6 +82,13 @@ void read_midi_events(struct RingBuf *event_queue) {
     while (snd_seq_event_input_pending(handle, 1) > 0) {
         if (snd_seq_event_input(handle, &event) < 0) {
             LOG_ERROR("Error in reading MIDI event");
+        }
+
+        if (event->type == SND_SEQ_EVENT_CONTROLLER && event->data.control.param == 64) {
+            LOG_INFO("sustain pedal - param: %d, value: %d", event->data.control.param,
+                     event->data.control.value);
+
+            sustain_pedal = event->data.control.value > 63;
         }
 
         struct MidiEvent midi_evt = snd_seq_event_to_midi_event(event);

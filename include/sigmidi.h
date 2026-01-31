@@ -10,6 +10,7 @@
 
 extern snd_seq_t *handle;
 extern int local_port;
+extern bool sustain_pedal;
 
 struct MidiEvent {
     snd_seq_event_type_t type;
