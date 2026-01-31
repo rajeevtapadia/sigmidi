@@ -1,6 +1,7 @@
 #include <alsa/asoundlib.h>
 #include <assert.h>
 #include <limits.h>
+#include <math.h>
 #include <sigmidi-renderer.h>
 #include <sigmidi.h>
 #include <stdlib.h>
@@ -135,6 +136,21 @@ long long alsa_time_now_ms() {
     return convert_alsa_real_time_to_ms(*t);
 }
 
+inline int calc_sustain_duration(struct Note n) {
+    int note = n.note;
+    int velocity = n.velocity;
+    if (note < 21)
+        note = 21;
+
+    // Formula
+    // Seconds = 35 * e^(-0.036 * (n - 21)) * (0.5 + (v / 254.0))
+    double base_pitch_duration = 35.0 * exp(-0.036 * (note - 21));
+    double velocity_multiplier = 0.5 + (velocity / 254.0);
+    double duration_sec = base_pitch_duration * velocity_multiplier;
+
+    return (int)(duration_sec * 1000.0);
+}
+
 // Process the ON/OFF midi events into struct Note with proper timestamping
 void process_midi_events(struct RingBuf *event_queue, struct RingBuf *note_queue) {
     static struct Note *keys[255] = {0};
@@ -149,6 +165,7 @@ void process_midi_events(struct RingBuf *event_queue, struct RingBuf *note_queue
             note->velocity = midi_evt.velocity;
             note->start = midi_evt.time;
             note->end = INT_MAX;
+            note->end_sustain = calc_sustain_duration(*note);
 
             ringbuf_push(note_queue, &note);
             keys[midi_evt.note] = note;
