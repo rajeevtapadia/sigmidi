@@ -68,6 +68,18 @@ void set_tempo(int t) {
     player.measure_len_px = player.measure_len_ms * player.px_per_ms;
 }
 
+void toggle_fullscreen() {
+    ToggleFullscreen();
+    layout.white_width = GetScreenWidth() / layout.white_key_count;
+    layout.black_width = layout.white_width * 0.5;
+    layout.black_height = GetScreenHeight() / 12;
+    layout.offset_y = GetScreenHeight() * 7 / 8;
+
+    player.height_px = layout.offset_y;
+    player.px_per_ms = (double)player.height_px / player.height_ms;
+    set_tempo(player.bpm);
+}
+
 void init_renderer(struct RendererOptions options) {
     opt = options;
 
@@ -283,6 +295,9 @@ void pre_drawing() {
     }
     if (IsKeyPressed(KEY_V)) {
         opt.velocity_based_color = !opt.velocity_based_color;
+    }
+    if (IsKeyPressed(KEY_F)) {
+        toggle_fullscreen();
     }
 }
 
