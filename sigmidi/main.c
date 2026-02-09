@@ -201,7 +201,7 @@ int main(int argc, char **argv) {
         .title = "SigMidi",
         .fps = 60,
         .octave_count = 5,
-        .octave_offset = 2,
+        .octave_offset = 3,
         .velocity_based_color = true,
     };
     init_renderer(opt);

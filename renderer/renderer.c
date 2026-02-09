@@ -68,9 +68,9 @@ void set_tempo(int t) {
     player.measure_len_px = player.measure_len_ms * player.px_per_ms;
 }
 
-void toggle_fullscreen() {
-    ToggleFullscreen();
+void resize_screen() {
     layout.white_width = GetScreenWidth() / layout.white_key_count;
+    layout.white_height = GetScreenHeight() / 8;
     layout.black_width = layout.white_width * 0.5;
     layout.black_height = GetScreenHeight() / 12;
     layout.offset_y = GetScreenHeight() * 7 / 8;
@@ -80,9 +80,15 @@ void toggle_fullscreen() {
     set_tempo(player.bpm);
 }
 
+void toggle_fullscreen() {
+    ToggleFullscreen();
+    resize_screen();
+}
+
 void init_renderer(struct RendererOptions options) {
     opt = options;
 
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(opt.width, opt.height, opt.title);
     SetTargetFPS(opt.fps);
 
@@ -271,6 +277,9 @@ void update_octave_count(int new_count) {
 }
 
 void pre_drawing() {
+    if (IsWindowResized()) {
+        resize_screen();
+    }
     // Keyboard shortcuts
     if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) {
         if (IsKeyPressed(KEY_EQUAL) && opt.octave_offset < 9) {
