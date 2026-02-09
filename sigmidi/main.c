@@ -4,6 +4,7 @@
 #include <sigmidi-renderer.h>
 #include <sigmidi.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define RINGBUF_IMPLEMENTATION
 #include <3dparty/generic-ringbuf.h>
@@ -186,14 +187,35 @@ void event_loop() {
     ringbuf_free(&note_queue);
 }
 
-int main(int argc, char **argv) {
-    if (argc != 2) {
-        print_usage();
-        return -1;
+void list_seq_clients(struct AlsaClient *client_list, int size) {
+    assert(size > 0);
+    assert(handle != NULL);
+
+    snd_seq_client_info_t *cinfo;
+    snd_seq_client_info_alloca(&cinfo);
+    snd_seq_client_info_set_client(cinfo, -1);
+
+    int i = 0;
+    while (i < size && snd_seq_query_next_client(handle, cinfo) >= 0) {
+        int id = snd_seq_client_info_get_client(cinfo);
+        if (id != snd_seq_client_id(handle)) {
+            client_list[i].id = id;
+            strcpy(client_list[i].name, snd_seq_client_info_get_name(cinfo));
+            i++;
+        }
     }
+}
+
+int main(int argc, char **argv) {
+    // if (argc != 2) {
+    //     print_usage();
+    //     return -1;
+    // }
 
     init_seqencer();
-    subscribe_to_a_sender(argv[1]);
+    if (argc == 2) {
+        subscribe_to_a_sender(argv[1]);
+    }
 
     struct RendererOptions opt = {
         .width = 1600,

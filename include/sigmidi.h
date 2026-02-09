@@ -35,4 +35,12 @@ struct RendererOptions {
     bool velocity_based_color;
 };
 
+struct AlsaClient {
+    int id;
+    char name[64];
+};
+
+
+void list_seq_clients(struct AlsaClient *client_list, int size);
+
 #endif // SIGMIDI_H

@@ -43,6 +43,7 @@ struct Player {
 static struct Layout layout;
 static struct Player player;
 static struct RendererOptions opt;
+static struct AlsaClient client_list[10];
 
 void calc_layout() {
     layout.octave_count = opt.octave_count;
@@ -206,11 +207,25 @@ static void draw_piano_roll() {
     }
 }
 
+void show_client_list() {
+    list_seq_clients(client_list, 10);
+    const char *lines[10];
+    for (int i = 0; i < 10; i++) {
+        if (strlen(client_list[i].name) == 0)
+            continue;
+        lines[i] = TextFormat("%3d: %s", client_list[i].id, client_list[i].name);
+    };
+    DrawText(TextJoin(lines, 10, "\n"), 0, 20, 20, TEXT_COLOR);
+}
+
 void end_drawing() {
     draw_piano_roll();
     const char *status_str = TextFormat("Tempo: %d, Beats/Measure: %d", (int)player.bpm,
                                         player.beats_per_measure);
     DrawText(status_str, 0, 0, 20, TEXT_COLOR);
+    if (IsKeyDown(KEY_L)) {
+        show_client_list();
+    }
     EndDrawing();
 }
 
