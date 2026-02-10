@@ -98,6 +98,7 @@ void subscribe_to_a_sender(char *sender_str) {
         exit(-1);
     }
     snd_seq_connect_from(handle, local_port, sender_addr.client, sender_addr.port);
+    LOG_INFO("Subscribed to %s successfully!", sender_str);
 }
 
 long long alsa_time_now_ms() {

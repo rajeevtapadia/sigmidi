@@ -323,6 +323,13 @@ void pre_drawing() {
     if (IsKeyPressed(KEY_F)) {
         toggle_fullscreen();
     }
+    if (IsKeyDown(KEY_L)) {
+        int client_idx = GetCharPressed() - '0' - 1;
+        if (client_idx >= 0 && client_idx <= 9) {
+            LOG_INFO("client_idx %d", client_idx);
+            subscribe_to_a_sender(client_list[client_idx].name);
+        }
+    }
 }
 
 void post_drawing() {
