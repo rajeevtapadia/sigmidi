@@ -207,6 +207,46 @@ void list_seq_clients(struct AlsaClient *client_list, int size) {
     }
 }
 
+int get_seq_client_name(int client_id, char buf[64]) {
+    snd_seq_client_info_t *cinfo;
+
+    snd_seq_client_info_alloca(&cinfo);
+    snd_seq_client_info_set_client(cinfo, client_id);
+
+    if (snd_seq_get_any_client_info(handle, client_id, cinfo) < 0)
+        return -1;
+
+    const char *name = snd_seq_client_info_get_name(cinfo);
+    if (!name)
+        return -1;
+
+    snprintf(buf, 64, "%s", name);
+    return 0;
+}
+
+void list_subscribed_seq_clients(struct AlsaClient *client_list, int size) {
+    snd_seq_query_subscribe_t *query;
+    snd_seq_query_subscribe_alloca(&query);
+
+    snd_seq_addr_t local_addr = {
+        .client = snd_seq_client_id(handle),
+        .port = local_port,
+    };
+
+    snd_seq_query_subscribe_set_root(query, &local_addr);
+    snd_seq_query_subscribe_set_type(query, SND_SEQ_QUERY_SUBS_WRITE);
+    snd_seq_query_subscribe_set_index(query, 0);
+
+    int i = 0;
+    while (i < size && snd_seq_query_port_subscribers(handle, query) == 0) {
+        const snd_seq_addr_t *subscriber = snd_seq_query_subscribe_get_addr(query);
+        client_list[i].id = subscriber->client;
+        get_seq_client_name(subscriber->client, client_list[i].name);
+        i++;
+        snd_seq_query_subscribe_set_index(query, i);
+    }
+}
+
 int main(int argc, char **argv) {
     // if (argc != 2) {
     //     print_usage();

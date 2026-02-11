@@ -44,6 +44,7 @@ static struct Layout layout;
 static struct Player player;
 static struct RendererOptions opt;
 static struct AlsaClient client_list[10];
+static struct AlsaClient sub_list[10];
 
 void calc_layout() {
     layout.octave_count = opt.octave_count;
@@ -218,6 +219,17 @@ void show_client_list() {
     DrawText(TextJoin(lines, 10, "\n"), 0, 20, 20, TEXT_COLOR);
 }
 
+void show_sub_list() {
+    list_subscribed_seq_clients(sub_list, 10);
+    const char *lines[10];
+    for (int i = 0; i < 10; i++) {
+        if (strlen(sub_list[i].name) == 0)
+            continue;
+        lines[i] = TextFormat("%3d: %s", sub_list[i].id, sub_list[i].name);
+    };
+    DrawText(TextJoin(lines, 10, "\n"), 0, 20, 20, TEXT_COLOR);
+}
+
 void end_drawing() {
     draw_piano_roll();
     const char *status_str = TextFormat("Tempo: %d, Beats/Measure: %d", (int)player.bpm,
@@ -225,6 +237,8 @@ void end_drawing() {
     DrawText(status_str, 0, 0, 20, TEXT_COLOR);
     if (IsKeyDown(KEY_L)) {
         show_client_list();
+    } else if (IsKeyDown(KEY_S)) {
+        show_sub_list();
     }
     EndDrawing();
 }
@@ -326,7 +340,6 @@ void pre_drawing() {
     if (IsKeyDown(KEY_L)) {
         int client_idx = GetCharPressed() - '0' - 1;
         if (client_idx >= 0 && client_idx <= 9) {
-            LOG_INFO("client_idx %d", client_idx);
             subscribe_to_a_sender(client_list[client_idx].name);
         }
     }
