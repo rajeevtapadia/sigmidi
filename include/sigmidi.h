@@ -44,5 +44,6 @@ struct AlsaClient {
 void list_seq_clients(struct AlsaClient *client_list, int size);
 void list_subscribed_seq_clients(struct AlsaClient *client_list, int size);
 void subscribe_to_a_sender(char *sender_str);
+void unsubscribe_to_a_sender(char *sender_str);
 
 #endif // SIGMIDI_H

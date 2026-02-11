@@ -305,6 +305,15 @@ void update_octave_count(int new_count) {
     calc_layout();
 }
 
+bool is_subscribed(int client_id) {
+    for (int i = 0; *sub_list[i].name; i++) {
+        if (sub_list[i].id == client_id) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void pre_drawing() {
     if (IsWindowResized()) {
         resize_screen();
@@ -340,7 +349,17 @@ void pre_drawing() {
     if (IsKeyDown(KEY_L)) {
         int client_idx = GetCharPressed() - '0' - 1;
         if (client_idx >= 0 && client_idx <= 9) {
-            subscribe_to_a_sender(client_list[client_idx].name);
+            const struct AlsaClient client = client_list[client_idx];
+            if (!is_subscribed(client.id)) {
+                subscribe_to_a_sender(client.name);
+            }
+        }
+    }
+    if (IsKeyDown(KEY_S)) {
+        int sub_idx = GetCharPressed() - '0' - 1;
+        if (sub_idx >= 0 && sub_idx <= 9) {
+            const struct AlsaClient client = sub_list[sub_idx];
+            unsubscribe_to_a_sender(client.name);
         }
     }
 }

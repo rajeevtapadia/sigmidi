@@ -94,11 +94,24 @@ void read_midi_events(struct RingBuf *event_queue) {
 void subscribe_to_a_sender(char *sender_str) {
     snd_seq_addr_t sender_addr;
     if (snd_seq_parse_address(handle, &sender_addr, sender_str) < 0) {
-        LOG_ERROR("Invalid port address: %s", sender_str);
+        LOG_ERROR("Invalid client name or port: %s", sender_str);
+        // TODO: better error handling
         exit(-1);
     }
     snd_seq_connect_from(handle, local_port, sender_addr.client, sender_addr.port);
     LOG_INFO("Subscribed to %s successfully!", sender_str);
+}
+
+void unsubscribe_to_a_sender(char *sender_str) {
+    assert(sender_str);
+
+    snd_seq_addr_t sender_addr;
+    if (snd_seq_parse_address(handle, &sender_addr, sender_str) < 0) {
+        LOG_ERROR("Invalid client name or port: %s", sender_str);
+        exit(-1);
+    }
+    snd_seq_disconnect_from(handle, local_port, sender_addr.client, sender_addr.port);
+    LOG_INFO("Unsubscribed to %s successfully!", sender_str);
 }
 
 long long alsa_time_now_ms() {
@@ -191,6 +204,8 @@ void event_loop() {
 void list_seq_clients(struct AlsaClient *client_list, int size) {
     assert(size > 0);
     assert(handle != NULL);
+    assert(client_list);
+    memset(client_list, 0, sizeof(struct AlsaClient) * size);
 
     snd_seq_client_info_t *cinfo;
     snd_seq_client_info_alloca(&cinfo);
@@ -225,6 +240,11 @@ int get_seq_client_name(int client_id, char buf[64]) {
 }
 
 void list_subscribed_seq_clients(struct AlsaClient *client_list, int size) {
+    assert(size > 0);
+    assert(handle != NULL);
+    assert(client_list);
+    memset(client_list, 0, sizeof(struct AlsaClient) * size);
+
     snd_seq_query_subscribe_t *query;
     snd_seq_query_subscribe_alloca(&query);
 
