@@ -16,7 +16,7 @@ struct MidiEvent {
     snd_seq_event_type_t type;
     unsigned char note;
     unsigned char velocity;
-    long long time;
+    int time;
 };
 
 struct Note {
@@ -41,7 +41,6 @@ struct AlsaClient {
     int id;
     char name[64];
 };
-
 
 void list_seq_clients(struct AlsaClient *client_list, int size);
 void list_subscribed_seq_clients(struct AlsaClient *client_list, int size);

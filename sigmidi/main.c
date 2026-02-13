@@ -55,8 +55,8 @@ void init_seqencer() {
              local_port);
 }
 
-long long convert_alsa_real_time_to_ms(snd_seq_real_time_t time) {
-    long long ms = time.tv_sec * 1000;
+int convert_alsa_real_time_to_ms(snd_seq_real_time_t time) {
+    int ms = time.tv_sec * 1000;
     ms += time.tv_nsec / 1000000;
     return ms;
 }
@@ -73,12 +73,12 @@ static inline struct MidiEvent snd_seq_event_to_midi_event(snd_seq_event_t *alsa
     };
 
     if (alsa_evt->type == SND_SEQ_EVENT_NOTEON) {
-        LOG_INFO("timestamp: %lld ms, velocity: %d", midi_evt.time, midi_evt.velocity);
+        LOG_INFO("timestamp: %d ms, velocity: %d", midi_evt.time, midi_evt.velocity);
     }
     return midi_evt;
 }
 
-void set_sustain_pedal(bool state, long long time, struct RingBuf *note_queue) {
+void set_sustain_pedal(bool state, int time, struct RingBuf *note_queue) {
     sustain_pedal = state;
     // Mute all the notes that are sustaining
     if (state == false) {
@@ -141,7 +141,7 @@ void unsubscribe_to_a_sender(char *sender_str) {
     LOG_INFO("Unsubscribed to %s successfully!", sender_str);
 }
 
-long long alsa_time_now_ms() {
+int alsa_time_now_ms() {
     snd_seq_queue_status_t *q_status;
     snd_seq_queue_status_alloca(&q_status);
 
@@ -205,7 +205,7 @@ void gc_note_queue(struct RingBuf *note_queue) {
     if (ringbuf_is_empty(note_queue))
         return;
 
-    long long time_now_ms = alsa_time_now_ms();
+    int time_now_ms = alsa_time_now_ms();
 
     while (!ringbuf_is_empty(note_queue)) {
         struct Note *item;
