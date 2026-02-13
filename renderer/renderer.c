@@ -277,7 +277,7 @@ void draw_note(struct Note note) {
     duration = note.end - note.start;
     if (note.end == INT_MAX) {
         duration = curr_time - note.start;
-    } else if (note.sustain && duration < note.sus_duration) {
+    } else if (duration < note.sus_duration) {
         duration += note.sus_duration;
     }
 

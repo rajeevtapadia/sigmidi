@@ -25,7 +25,6 @@ struct Note {
     int start;
     int end;
     int sus_duration;
-    bool sustain;
 };
 
 struct RendererOptions {

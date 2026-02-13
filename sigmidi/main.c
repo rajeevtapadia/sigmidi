@@ -89,9 +89,9 @@ void set_sustain_pedal(bool state, long long time, struct RingBuf *note_queue) {
             int rb_idx = (note_queue->out + i) % note_queue->capacity;
             struct Note *note = *(struct Note **)(RINGBUF_AT(note_queue, rb_idx));
 
-            if (time < (note->start + note->sus_duration) && note->sustain) {
+            if (time < (note->start + note->sus_duration) && note->sus_duration != 0) {
                 note->end = time;
-                note->sustain = false;
+                note->sus_duration = 0;
             }
         }
     }
@@ -192,11 +192,9 @@ void process_midi_events(struct RingBuf *event_queue, struct RingBuf *note_queue
             if (sustain_pedal) {
                 note->end = midi_evt.time;
                 note->sus_duration = calc_sustain_duration(*note);
-                note->sustain = true;
             } else {
                 note->end = midi_evt.time;
                 note->sus_duration = 0;
-                note->sustain = false;
             }
             keys[midi_evt.note] = NULL;
         }
