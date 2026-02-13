@@ -211,7 +211,7 @@ void gc_note_queue(struct RingBuf *note_queue) {
         struct Note *item;
         ringubf_peek(note_queue, &item);
         // TODO: Hardcoded value BAD!!
-        if (item->end > (time_now_ms - 5000)) {
+        if (item->end + item->sus_duration > (time_now_ms - 5000)) {
             break;
         }
 
