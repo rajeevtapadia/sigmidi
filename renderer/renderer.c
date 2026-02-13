@@ -270,14 +270,17 @@ Color get_velocity_color_tanh(Color base_color, unsigned char velocity) {
 void draw_note(struct Note note) {
     int x, y, w, h, duration;
     Color color;
-
     // Calculate y and h
     // TODO: use the ALSA queue clock time
     double curr_time = GetTime() * 1000;
+
     duration = note.end - note.start;
     if (note.end == INT_MAX) {
         duration = curr_time - note.start;
+    } else if (note.sustain && duration < note.sus_duration) {
+        duration += note.sus_duration;
     }
+
     y = player.height_px - ((curr_time - note.start) * player.px_per_ms);
     h = duration * player.px_per_ms;
 

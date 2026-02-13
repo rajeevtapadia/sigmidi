@@ -78,21 +78,39 @@ static inline struct MidiEvent snd_seq_event_to_midi_event(snd_seq_event_t *alsa
     return midi_evt;
 }
 
-void read_midi_events(struct RingBuf *event_queue) {
+void set_sustain_pedal(bool state, long long time, struct RingBuf *note_queue) {
+    sustain_pedal = state;
+    // Mute all the notes that are sustaining
+    if (state == false) {
+        if (ringbuf_is_empty(note_queue)) {
+            return;
+        }
+        for (int i = 0; i < note_queue->size; i++) {
+            int rb_idx = (note_queue->out + i) % note_queue->capacity;
+            struct Note *note = *(struct Note **)(RINGBUF_AT(note_queue, rb_idx));
+
+            if (time < (note->start + note->sus_duration) && note->sustain) {
+                note->end = time;
+                note->sustain = false;
+            }
+        }
+    }
+}
+
+void read_midi_events(struct RingBuf *event_queue, struct RingBuf *note_queue) {
     snd_seq_event_t *event;
     while (snd_seq_event_input_pending(handle, 1) > 0) {
         if (snd_seq_event_input(handle, &event) < 0) {
             LOG_ERROR("Error in reading MIDI event");
         }
 
+        struct MidiEvent midi_evt = snd_seq_event_to_midi_event(event);
         if (event->type == SND_SEQ_EVENT_CONTROLLER && event->data.control.param == 64) {
             LOG_INFO("sustain pedal - param: %d, value: %d", event->data.control.param,
                      event->data.control.value);
 
-            sustain_pedal = event->data.control.value > 63;
+            set_sustain_pedal(event->data.control.value > 63, midi_evt.time, note_queue);
         }
-
-        struct MidiEvent midi_evt = snd_seq_event_to_midi_event(event);
         ringbuf_push(event_queue, &midi_evt);
         snd_seq_free_event(event);
     }
@@ -136,7 +154,7 @@ long long alsa_time_now_ms() {
     return convert_alsa_real_time_to_ms(*t);
 }
 
-inline int calc_sustain_duration(struct Note n) {
+int calc_sustain_duration(struct Note n) {
     int note = n.note;
     int velocity = n.velocity;
     if (note < 21)
@@ -144,7 +162,7 @@ inline int calc_sustain_duration(struct Note n) {
 
     // Formula
     // Seconds = 35 * e^(-0.036 * (n - 21)) * (0.5 + (v / 254.0))
-    double base_pitch_duration = 35.0 * exp(-0.036 * (note - 21));
+    double base_pitch_duration = 8.0 * exp(-0.036 * (note - 21));
     double velocity_multiplier = 0.5 + (velocity / 254.0);
     double duration_sec = base_pitch_duration * velocity_multiplier;
 
@@ -165,14 +183,21 @@ void process_midi_events(struct RingBuf *event_queue, struct RingBuf *note_queue
             note->velocity = midi_evt.velocity;
             note->start = midi_evt.time;
             note->end = INT_MAX;
-            note->end_sustain = calc_sustain_duration(*note);
 
             ringbuf_push(note_queue, &note);
             keys[midi_evt.note] = note;
         } else if (midi_evt.type == SND_SEQ_EVENT_NOTEOFF &&
                    keys[midi_evt.note] != NULL) {
             struct Note *note = keys[midi_evt.note];
-            note->end = midi_evt.time;
+            if (sustain_pedal) {
+                note->end = midi_evt.time;
+                note->sus_duration = calc_sustain_duration(*note);
+                note->sustain = true;
+            } else {
+                note->end = midi_evt.time;
+                note->sus_duration = 0;
+                note->sustain = false;
+            }
             keys[midi_evt.note] = NULL;
         }
     }
@@ -203,7 +228,7 @@ void event_loop() {
 
     // Start the event loop
     while (!window_should_close()) {
-        read_midi_events(&event_queue);
+        read_midi_events(&event_queue, &note_queue);
         process_midi_events(&event_queue, &note_queue);
 
         pre_drawing();

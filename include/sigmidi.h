@@ -24,7 +24,8 @@ struct Note {
     unsigned char velocity;
     int start;
     int end;
-    int end_sustain;
+    int sus_duration;
+    bool sustain;
 };
 
 struct RendererOptions {
