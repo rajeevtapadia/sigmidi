@@ -349,12 +349,18 @@ void pre_drawing() {
     if (IsKeyPressed(KEY_F)) {
         toggle_fullscreen();
     }
+    if (IsKeyPressed(KEY_P)) {
+        sustain_pedal_enabled = !sustain_pedal_enabled;
+        if (sustain_pedal_enabled == false) {
+            sustain_pedal = sustain_pedal_enabled;
+        }
+    }
     if (IsKeyDown(KEY_L)) {
         int client_idx = GetCharPressed() - '0' - 1;
         if (client_idx >= 0 && client_idx <= 9) {
             const struct AlsaClient client = client_list[client_idx];
             if (!is_subscribed(client.id)) {
-                subscribe_to_a_sender(client.name);
+                subscribe_to_a_sender((char *)client.name);
             }
         }
     }
@@ -362,7 +368,7 @@ void pre_drawing() {
         int sub_idx = GetCharPressed() - '0' - 1;
         if (sub_idx >= 0 && sub_idx <= 9) {
             const struct AlsaClient client = sub_list[sub_idx];
-            unsubscribe_to_a_sender(client.name);
+            unsubscribe_to_a_sender((char *)client.name);
         }
     }
 }

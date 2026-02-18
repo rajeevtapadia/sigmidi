@@ -14,6 +14,7 @@ snd_seq_t *handle;
 int local_port;
 int queue_id;
 bool sustain_pedal = false;
+bool sustain_pedal_enabled = false;
 
 void print_usage() {
     LOG_ERROR("Usage: sigmidi <client>:<port>");
@@ -79,9 +80,10 @@ static inline struct MidiEvent snd_seq_event_to_midi_event(snd_seq_event_t *alsa
 }
 
 void set_sustain_pedal(bool state, int time, struct RingBuf *note_queue) {
-    sustain_pedal = state;
+    sustain_pedal = sustain_pedal_enabled && state;
+
     // Mute all the notes that are sustaining
-    if (state == false) {
+    if (sustain_pedal == false) {
         if (ringbuf_is_empty(note_queue)) {
             return;
         }
