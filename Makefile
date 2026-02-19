@@ -23,3 +23,6 @@ run: $(TARGET)
 
 clean:
 	rm -rf build $(TARGET)
+
+install: all
+	sudo cp build/main.out /usr/bin/sigmidi
